@@ -10,17 +10,22 @@ const LATIN_K = 1.1;            // EMS 字体 cap-height=500/1000，放大到大
 const hzCache = new Map();
 let latin = null;
 
-export async function loadLatin(font = 'EMSTech') {
-  if (latin) return latin;
+// Cache the promise, not the result: writeBlock asks for every glyph at once, and without this
+// each Latin character would start its own download of the same font file.
+export function loadLatin(font = 'EMSTech') {
+  if (!latin) latin = parseLatin(font).catch((e) => { latin = null; throw e; });
+  return latin;
+}
+
+async function parseLatin(font) {
   const src = await (await fetch(assets.latin(font))).text();
-  latin = {};
+  const out = {};
   for (const m of src.matchAll(/<glyph unicode="([^"]*)"[^>]*?horiz-adv-x="([\d.]+)"(?:[^>]*?d="([^"]*)")?/g)) {
     const u = m[1].replace(/&#x([0-9a-f]+);/i, (_, h) => String.fromCodePoint(parseInt(h, 16)))
       .replace('&amp;', '&').replace('&quot;', '"').replace('&lt;', '<').replace('&gt;', '>');
-    latin[u] = { adv: (+m[2] / 1000) * LATIN_K, strokes: parsePath(m[3] || '', LATIN_K / 1000) };
+    out[u] = { adv: (+m[2] / 1000) * LATIN_K, strokes: parsePath(m[3] || '', LATIN_K / 1000) };
   }
-  Object.assign(latin, extraSymbols());
-  return latin;
+  return Object.assign(out, extraSymbols());
 }
 
 function parsePath(d, k) {
@@ -91,18 +96,20 @@ function circle(cx, cy, r, n = 14) {
   });
 }
 
-export async function loadHanzi(ch) {
-  if (hzCache.has(ch)) return hzCache.get(ch);
+export function loadHanzi(ch) {
+  if (!hzCache.has(ch)) hzCache.set(ch, fetchHanzi(ch).catch((e) => { hzCache.delete(ch); throw e; }));
+  return hzCache.get(ch);
+}
+
+async function fetchHanzi(ch) {
   const r = await fetch(assets.hanzi(ch));
   if (!r.ok) throw new Error(`No stroke data for ${ch} (缺少笔画数据)`);
   const d = await r.json();
-  const g = {
+  return {
     adv: 0.86,
     hanzi: true,
     strokes: d.medians.map((m) => m.map(([x, y]) => [x / 1024 - 0.07, (900 - y) / 1024 - HZ_BASE])),
   };
-  hzCache.set(ch, g);
-  return g;
 }
 
 const isHan = (c) => /\p{Script=Han}/u.test(c);

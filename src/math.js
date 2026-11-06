@@ -6,7 +6,16 @@ import { assets } from './config.js';
 let ready = null;
 export function loadMathJax() {
   if (ready) return ready;
-  window.MathJax = { loader: { paths: { 'mathjax-newcm': assets.mathjaxFont } }, svg: { fontCache: 'none' }, startup: { typeset: false } };
+  const paths = { 'mathjax-newcm': assets.mathjaxFont };
+  if (assets.mathjaxRoot) paths.mathjax = assets.mathjaxRoot;
+  // 只借它排版：关掉读屏用的语义增强 / 语音 / 盲文，否则会在后台多下约 1 MB 的语音引擎
+  window.MathJax = {
+    loader: { paths }, svg: { fontCache: 'none' }, startup: { typeset: false },
+    options: {
+      enableEnrichment: false, enableSpeech: false, enableBraille: false, enableExplorer: false,
+      menuOptions: { settings: { enrich: false, speech: false, braille: false } },
+    },
+  };
   ready = new Promise((res, rej) => {
     const s = document.createElement('script');
     s.src = assets.mathjax;

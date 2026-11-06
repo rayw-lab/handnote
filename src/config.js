@@ -5,6 +5,8 @@
 //   latin:   single-line SVG font for letters/digits/symbols (hersheytext, EMS fonts under SIL OFL)
 //   mathjax: MathJax 4 tex-svg component (used only for layout; every glyph is re-drawn by hand)
 //   mathjaxFont: base URL of @mathjax/mathjax-newcm-font
+//   mathjaxRoot: optional; where MathJax loads its own extensions from. Only needed when `mathjax`
+//                is not a normal URL (e.g. a blob: URL of a script you downloaded yourself).
 const CDN = 'https://cdn.jsdelivr.net/npm';
 
 export const assets = {
@@ -14,7 +16,7 @@ export const assets = {
   mathjaxFont: `${CDN}/@mathjax/mathjax-newcm-font@4.1.3`,
 };
 
-// configure({ hanzi, latin, mathjax, mathjaxFont }) — strings may be templates with {ch} / {font}.
+// configure({ hanzi, latin, mathjax, mathjaxFont, mathjaxRoot }) — strings may be templates with {ch} / {font}.
 export function configure(o = {}) {
   for (const k of ['hanzi', 'latin']) {
     if (typeof o[k] === 'string') {
@@ -24,5 +26,6 @@ export function configure(o = {}) {
   }
   if (o.mathjax) assets.mathjax = o.mathjax;
   if (o.mathjaxFont) assets.mathjaxFont = o.mathjaxFont;
+  if (o.mathjaxRoot) assets.mathjaxRoot = o.mathjaxRoot;
   return assets;
 }

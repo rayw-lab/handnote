@@ -1,4 +1,4 @@
-import { createNote, REC } from 'handnote';
+import { createNote, REC, configure } from 'handnote';
 
 const PRESETS = {
   physics: `# 牛顿第二定律
@@ -73,6 +73,28 @@ function buildSwatches() {
   $('ink').innerHTML = INKS.map(([k, name, c]) => `<button type="button" role="radio" data-v="${k}" title="${name}" aria-label="${name}" style="--c:${c}"></button>`).join('');
 }
 
+/* ---------- MathJax (downloaded early by the inline script in index.html) ---------- */
+const BOOT = window.HN_BOOT;
+let mathReady = null;
+const hasMath = (text) => /\$[^$]+\$/.test(text);
+function ensureMath() {
+  if (!BOOT) return Promise.resolve();
+  mathReady ??= BOOT.ready.then(({ url, base, V }) => {
+    configure({ mathjax: url, mathjaxRoot: `${base}/mathjax@${V}`, mathjaxFont: `${base}/@mathjax/mathjax-newcm-font@${V}` });
+    // jsDelivr stalled and we fell back: fetch the stroke data from the same CDN
+    if (!base.includes('jsdelivr')) configure({ hanzi: `${base}/hanzi-writer-data@2.0.1/{ch}.json`, latin: `${base}/hersheytext@2.0.0/svg_fonts/{font}.svg` });
+  });
+  return mathReady;
+}
+function showRetry(text) {
+  const box = $('loading');
+  const why = '可能是网络慢，或者 CDN 被拦了。';
+  if (box) {
+    box.querySelector('small').textContent = why;
+    if (!box.querySelector('button')) box.insertAdjacentHTML('beforeend', '<button class="ghost" type="button" onclick="location.reload()">重试</button>');
+  } else $('message').innerHTML = `${text}，${why}<button class="ghost" type="button" style="margin-left:8px;padding:2px 10px" onclick="location.reload()">刷新重试</button>`;
+}
+
 /* ---------- render ---------- */
 async function build(text) {
   // shrink the text until it fits the page (a 16:9 page holds far fewer lines than 3:4)
@@ -106,6 +128,11 @@ async function render({ animate = $('animate').checked } = {}) {
   stopAnim?.();
   const text = $('text').value;
   $('message').textContent = '';
+  if (hasMath(text)) {
+    if (BOOT && BOOT.pct < 100 && !$('loading')) $('message').textContent = '公式排版器还在下载，下好就写…';
+    try { await ensureMath(); } catch { if (my === job) showRetry('公式排版器没下下来'); return; }
+    if (my !== job) return;
+  }
   try {
     const out = await build(text);
     if (my !== job) return;
@@ -113,7 +140,6 @@ async function render({ animate = $('animate').checked } = {}) {
     const paper = $('paper');
     paper.className = 'paper ' + (S.format === 'portrait' ? '' : S.format);
     paper.innerHTML = out.svg;
-    $('loading').hidden = true;
     const notes = [];
     if (out.size < S.size) notes.push(`内容比较多，字号自动缩到 ${out.size}`);
     if (out.skipped.length) notes.push(`这些字暂时写不了，已跳过：${out.skipped.join(' ')}`);
@@ -121,7 +147,7 @@ async function render({ animate = $('animate').checked } = {}) {
     if (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) stopAnim = writeOn(paper.querySelector('svg'), out.items);
   } catch (e) {
     if (my !== job) return;
-    $('loading').hidden = true;
+    $('loading')?.remove();
     $('message').textContent = /TeX|公式/.test(e.message) ? '有个公式写不出来，检查一下 $…$ 里的写法。' : '出错了：' + e.message;
   }
 }

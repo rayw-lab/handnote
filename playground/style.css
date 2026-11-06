@@ -48,16 +48,21 @@ button, input, textarea { font: inherit; color: inherit; }
 .paper-wrap { position: relative; display: grid; place-items: center start; }
 .paper {
   width: min(100%, calc((100vh - 250px) * .75)); min-width: 280px; aspect-ratio: 3 / 4;
-  background: #fbf8ee; box-shadow: var(--shadow); border-radius: 3px; overflow: hidden;
+  position: relative; background: #fbf8ee; box-shadow: var(--shadow); border-radius: 3px; overflow: hidden;
   transform: rotate(-.4deg); transition: aspect-ratio .3s ease, width .3s ease;
 }
 .paper.square { aspect-ratio: 1; width: min(100%, calc(100vh - 250px)); }
 .paper.wide { aspect-ratio: 16 / 9; width: 100%; }
 .paper svg { display: block; width: 100%; height: 100%; }
 .loading {
-  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
-  font: 15px var(--serif); color: #8a7f6a; letter-spacing: .1em;
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px;
+  padding: 24px; text-align: center; font: 15px var(--serif); color: #8a7f6a; letter-spacing: .08em;
 }
+.loading p { margin: 0; font-variant-numeric: tabular-nums; }
+.loading small { font-size: 12px; letter-spacing: .02em; color: #a59a84; max-width: 22em; line-height: 1.6; }
+.ld-track { width: min(220px, 60%); height: 3px; border-radius: 3px; background: #e9e2cf; overflow: hidden; }
+.ld-track i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s ease; }
+.loading button { margin-top: 4px; pointer-events: auto; }
 .loading[hidden] { display: none; }
 
 .actions { display: flex; align-items: center; gap: 8px; margin-top: 18px; flex-wrap: wrap; }

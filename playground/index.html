@@ -7,13 +7,67 @@
   <title>handnote · 手写笔记试玩</title>
   <meta name="description" content="用代码写一页真的手写笔记：汉字、公式、荧光笔，一笔一笔写出来。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c8352b'/%3E%3Cpath d='M8 22c3-1 5-6 7-12 1 5 2 9 3 11 2-4 4-6 6-6' stroke='%23fbf8ee' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="./style.css">
+  <script>
+    // MathJax（公式排版器，压缩后约 600 KB）是第一次打开时最慢的一块：页面一解析就开始下，
+    // 带进度；12 秒收不到数据就换下一个 CDN。之后浏览器有缓存，再开就快了。
+    window.HN_BOOT = (() => {
+      const RAW = 1849625, V = '4.1.3', CDNS = ['https://cdn.jsdelivr.net/npm', 'https://unpkg.com'];
+      const st = { pct: 0, base: CDNS[0], failed: false };
+      const show = () => {
+        const bar = document.getElementById('ld-bar'), txt = document.getElementById('ld-text');
+        if (bar) bar.style.width = st.pct + '%';
+        if (txt) txt.textContent = st.failed ? '公式排版器没下下来' : st.pct >= 100 ? '开始写…' : `正在下载公式排版器 ${st.pct}%`;
+      };
+      st.show = show;
+      async function get(base) {
+        const ctl = new AbortController(); let timer;
+        const arm = () => { clearTimeout(timer); timer = setTimeout(() => ctl.abort(), 12000); };
+        arm();
+        try {
+          const r = await fetch(`${base}/mathjax@${V}/tex-svg.js`, { signal: ctl.signal });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const rd = r.body.getReader(), parts = []; let n = 0;
+          for (;;) {
+            const { done, value } = await rd.read();
+            if (done) break;
+            parts.push(value); n += value.length; arm();
+            st.pct = Math.min(99, Math.round(n / RAW * 100)); show();
+          }
+          return URL.createObjectURL(new Blob(parts, { type: 'text/javascript' }));
+        } finally { clearTimeout(timer); }
+      }
+      st.ready = (async () => {
+        for (const base of CDNS) {
+          try { st.base = base; const url = await get(base); st.pct = 100; show(); return { url, base, V }; }
+          catch { st.pct = 0; show(); }
+        }
+        st.failed = true; show();
+        throw new Error('MathJax download failed');
+      })();
+      st.ready.catch(() => {});
+      return st;
+    })();
+  </script>
   <script type="importmap">
     { "imports": {
       "handnote": "../src/index.js",
       "perfect-freehand": "https://cdn.jsdelivr.net/npm/perfect-freehand@1.2.3/dist/esm/index.mjs"
     } }
   </script>
+  <link rel="modulepreload" href="../src/index.js">
+  <link rel="modulepreload" href="../src/config.js">
+  <link rel="modulepreload" href="../src/rng.js">
+  <link rel="modulepreload" href="../src/write.js">
+  <link rel="modulepreload" href="../src/pen.js">
+  <link rel="modulepreload" href="../src/note.js">
+  <link rel="modulepreload" href="../src/layout.js">
+  <link rel="modulepreload" href="../src/glyphs.js">
+  <link rel="modulepreload" href="../src/math.js">
+  <link rel="modulepreload" href="../src/paper.js">
+  <link rel="modulepreload" href="../src/sketch.js">
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/perfect-freehand@1.2.3/dist/esm/index.mjs">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
@@ -32,8 +86,13 @@
         <p>汉字、公式、荧光笔全由代码现写。同一个字写两遍，不会一样。</p>
       </div>
       <div class="paper-wrap" id="paper-wrap">
-        <div id="paper" class="paper" role="img" aria-label="手写笔记预览"></div>
-        <div id="loading" class="loading">正在准备笔和纸…</div>
+        <div id="paper" class="paper" role="img" aria-label="手写笔记预览">
+          <div id="loading" class="loading" aria-live="polite">
+            <p id="ld-text">正在准备笔和纸…</p>
+            <div class="ld-track"><i id="ld-bar"></i></div>
+            <small>第一次打开要下载约 600 KB 的公式排版器，之后就快了。</small>
+          </div>
+        </div>
       </div>
       <div class="actions">
         <button id="rewrite" class="primary" type="button">再写一遍</button>
