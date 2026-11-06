@@ -1,0 +1,29 @@
+<!doctype html><meta charset="utf-8"><title>handnote</title><link rel="icon" href="data:,">
+<style>body{margin:0}svg{display:block}</style>
+<script type="importmap">{ "imports": { "perfect-freehand": "/nm/perfect-freehand/dist/esm/index.mjs", "handnote": "/src/index.js" } }</script>
+<svg id="s" xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440"></svg>
+<script type="module">
+// Page shell used by the CLI: ?mod=/work/<module>.js&p=<n>[&seed=]
+// A page module exports PAGES (array of async (c) => {...}) and optional PAGE {w,h,paper}, TOTAL, SEED_BASE.
+import { configure, makeRng, writeText, writeMath, makeCtx, checkLayout, PENS } from 'handnote';
+configure({ hanzi: '/hz/{ch}.json', latin: '/hershey/{font}.svg', mathjax: '/mj/tex-svg.js', mathjaxFont: '/mjfont' });
+try {
+  const q = new URLSearchParams(location.search);
+  const mod = await import(q.get('mod'));
+  const n = Number(q.get('p') || 1), total = mod.TOTAL || mod.PAGES.length;
+  const seed = Number(q.get('seed') || (mod.SEED_BASE ?? 100) + n);
+  const rng = makeRng(seed);
+  const pen = typeof mod.PAGE?.pen === 'object' ? mod.PAGE.pen : PENS[mod.PAGE?.pen || 'gel'];
+  const W = { text: (s, o) => writeText(s, { pen, ...o }), math: (t, o) => writeMath(t, { pen, ...o }) };
+  const PW = mod.PAGE?.w || 1080, PH = mod.PAGE?.h || 1440, svgEl = document.getElementById('s');
+  svgEl.setAttribute('width', PW); svgEl.setAttribute('height', PH); svgEl.setAttribute('viewBox', `0 0 ${PW} ${PH}`);
+  const c = makeCtx(W, rng, total, mod.PAGE || {});
+  await mod.PAGES[n - 1](c);
+  const { svg, boxes, texts } = c.done();
+  svgEl.innerHTML = '<defs><filter id="soft"><feGaussianBlur stdDeviation="5"/></filter></defs>' + svg;
+  const imgs = [...document.querySelectorAll('image')];
+  await Promise.all(imgs.map((im) => new Promise((r) => { const i = new Image(); i.onload = i.onerror = r; i.src = im.getAttribute('href'); })));
+  window.__report = { page: n, seed, total, issues: checkLayout(boxes, PW, PH), texts };
+  window.__done = true;
+} catch (e) { window.__error = e.stack || String(e); }
+</script>

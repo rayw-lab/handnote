@@ -1,0 +1,28 @@
+{
+  "name": "handnote",
+  "version": "0.1.0",
+  "description": "Programmable Chinese handwriting notes: every character written stroke by stroke, math included, with write-on animation. 可编程的中文手写笔记。",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "bin": { "handnote": "./cli/handnote.mjs" },
+  "files": ["src", "cli", "shell", "examples", "skills", "NOTICE.md", "README.en.md"],
+  "scripts": {
+    "test": "node --test test/cli.test.mjs",
+    "examples": "node cli/handnote.mjs render examples/notes.js --out docs/images/examples"
+  },
+  "keywords": ["handwriting", "chinese", "hanzi", "notes", "svg", "math", "mathjax", "xiaohongshu", "handwritten", "手写", "笔记"],
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@mathjax/mathjax-newcm-font": "4.1.3",
+    "hanzi-writer-data": "2.0.1",
+    "hersheytext": "2.0.0",
+    "mathjax": "4.1.3",
+    "perfect-freehand": "1.2.3",
+    "playwright": "^1.48.0"
+  }
+}

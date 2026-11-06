@@ -1,0 +1,90 @@
+<!doctype html><meta charset="utf-8"><title>handnote · write-on</title><link rel="icon" href="data:,">
+<style>body{margin:0}svg{display:block}</style>
+<script type="importmap">{ "imports": { "perfect-freehand": "/nm/perfect-freehand/dist/esm/index.mjs", "handnote": "/src/index.js" } }</script>
+<svg id="s" xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440"></svg>
+<script type="module">
+// 实况图 / 板书动画壳：?mod=/work/<页面模块>.js&p=<第几张>&t0=&t1=[&all=1]
+// 页面照常用 makeCtx 写；c.live() 之后的笔画在 t0→t1 之间按书写顺序现写（all=1 时整页从空白写起）；
+// c.video() 的窗口逐帧换成 /frames/NNNN.png。最后一帧 = 静态出图（封面）。
+import { configure, makeRng, writeText, writeMath, makeCtx, checkLayout, PENS, REC } from 'handnote';
+configure({ hanzi: '/hz/{ch}.json', latin: '/hershey/{font}.svg', mathjax: '/mj/tex-svg.js', mathjaxFont: '/mjfont' });
+try {
+  const q = new URLSearchParams(location.search);
+  const mod = await import(q.get('mod'));
+  const n = Number(q.get('p') || 1), total = mod.TOTAL || mod.PAGES.length;
+  const seed = Number(q.get('seed') || (mod.SEED_BASE ?? 100) + n);
+  const t0 = Number(q.get('t0') ?? 0.15), t1 = Number(q.get('t1') ?? 2.6), all = q.get('all') === '1';
+  REC.on = true; REC.live = false; REC.items = [];
+  const rng = makeRng(seed);
+  const pen = typeof mod.PAGE?.pen === 'object' ? mod.PAGE.pen : PENS[mod.PAGE?.pen || 'gel'];
+  const PW = mod.PAGE?.w || 1080, PH = mod.PAGE?.h || 1440;
+  const c = makeCtx({ text: (s, o) => writeText(s, { pen, ...o }), math: (t, o) => writeMath(t, { pen, ...o }) }, rng, total, mod.PAGE || {});
+  await mod.PAGES[n - 1](c);
+  REC.on = false; REC.live = false;
+  const { svg, boxes, texts } = c.done();
+  const root = document.getElementById('s');
+  root.setAttribute('width', PW); root.setAttribute('height', PH); root.setAttribute('viewBox', `0 0 ${PW} ${PH}`);
+  root.innerHTML = '<defs id="dfs"><filter id="soft"><feGaussianBlur stdDeviation="5"/></filter></defs>' + svg;
+  const defs = document.getElementById('dfs'), NS = 'http://www.w3.org/2000/svg';
+  const byD = new Map();
+  for (const el of root.querySelectorAll('path')) { const d = el.getAttribute('d'); if (!byD.has(d)) byD.set(d, []); byD.get(d).push(el); }
+  const items = REC.items.map((it) => ({ ...it, el: (byD.get(it.d) || []).shift() })).filter((it) => all || it.live);
+  const missing = items.filter((it) => !it.el).length;
+  // 每一笔的揭示：墨迹用沿中线的粗描边做遮罩，荧光笔用从左往右长的裁切框
+  const len = (pts) => pts.reduce((s, p, i) => s + (i ? Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0), 0);
+  items.forEach((it, i) => {
+    if (!it.el) return;
+    if (it.kind === 'ink') {
+      it.L = Math.max(1, len(it.pts));
+      const m = document.createElementNS(NS, 'mask'); m.id = 'mk' + i; m.setAttribute('maskUnits', 'userSpaceOnUse');
+      const p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', 'M' + it.pts.map((q) => q[0].toFixed(2) + ' ' + q[1].toFixed(2)).join('L'));
+      Object.entries({ fill: 'none', stroke: '#fff', 'stroke-width': Math.max(6, it.width * 3.2), 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-dasharray': `${it.L} ${it.L + 50}` }).forEach(([k, v]) => p.setAttribute(k, v));
+      m.appendChild(p); defs.appendChild(m); it.mp = p; it.maskId = 'mk' + i;
+    } else {
+      it.L = it.x1 - it.x0;
+      const cp = document.createElementNS(NS, 'clipPath'); cp.id = 'cp' + i;
+      const r = document.createElementNS(NS, 'rect');
+      Object.entries({ x: it.x0, y: it.y0, height: it.y1 - it.y0, width: 0 }).forEach(([k, v]) => r.setAttribute(k, v));
+      cp.appendChild(r); defs.appendChild(cp); it.rect = r; it.clipId = 'cp' + i;
+    }
+  });
+  // 时间表：每笔时长按长度，换字处多停一下；总长压进 t0→t1（太少时不放慢超过 1.5 倍，提前写完多停一会）
+  let S = 0, prevEnd = null;
+  for (const it of items) {
+    const d = it.kind === 'ink' ? 0.05 + it.L / 900 : 0.12 + it.L / 1800;
+    const start = it.kind === 'ink' ? it.pts[0] : [it.x0, (it.y0 + it.y1) / 2];
+    const gap = prevEnd && Math.hypot(start[0] - prevEnd[0], start[1] - prevEnd[1]) > 30 ? 0.05 : 0.02;
+    it.d0 = gap; it.d1 = d; S += gap + d;
+    prevEnd = it.kind === 'ink' ? it.pts[it.pts.length - 1] : [it.x1, (it.y0 + it.y1) / 2];
+  }
+  const k = items.length ? Math.min(1.5, (t1 - t0) / S) : 1;
+  let tt = t0;
+  for (const it of items) { tt += it.d0 * k; it.s = tt; it.dur = it.d1 * k; tt += it.d1 * k; }
+  const vids = [...root.querySelectorAll('image')].filter((im) => (im.getAttribute('href') || '').startsWith('/frames/'));
+  window.__frame = async (i, fps) => {
+    const t = i / fps;
+    for (const it of items) {
+      if (!it.el) continue;
+      const p = Math.max(0, Math.min(1, (t - it.s) / Math.max(1e-6, it.dur)));
+      if (it.kind === 'ink') {
+        if (p >= 1) { it.el.removeAttribute('mask'); it.el.style.visibility = ''; }
+        else if (p <= 0) it.el.style.visibility = 'hidden';
+        else { it.el.style.visibility = ''; it.el.setAttribute('mask', `url(#${it.maskId})`); it.mp.setAttribute('stroke-dashoffset', String(it.L * (1 - p))); }
+      } else {
+        if (p >= 1) it.el.removeAttribute('clip-path');
+        else { it.el.setAttribute('clip-path', `url(#${it.clipId})`); it.rect.setAttribute('width', String(it.L * p)); }
+      }
+    }
+    for (const im of vids) {
+      const href = `/frames/${String(i).padStart(4, '0')}.png`;
+      const pre = new Image(); pre.src = href; await pre.decode().catch(() => {});
+      im.setAttribute('href', href);
+      if (im.decode) await im.decode().catch(() => {});
+    }
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  };
+  window.__report = { page: n, seed, total, width: PW, height: PH, issues: checkLayout(boxes, PW, PH), texts, liveItems: items.length, missing, videos: vids.length, writeEnd: tt, speed: k };
+  window.__done = true;
+} catch (e) { window.__error = e.stack || String(e); }
+</script>

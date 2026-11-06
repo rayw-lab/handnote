@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>handnote · 手写笔记试玩</title>
+  <meta name="description" content="用代码写一页真的手写笔记：汉字、公式、荧光笔，一笔一笔写出来。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c8352b'/%3E%3Cpath d='M8 22c3-1 5-6 7-12 1 5 2 9 3 11 2-4 4-6 6-6' stroke='%23fbf8ee' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    { "imports": {
+      "handnote": "../src/index.js",
+      "perfect-freehand": "https://cdn.jsdelivr.net/npm/perfect-freehand@1.2.3/dist/esm/index.mjs"
+    } }
+  </script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="./">handnote <span>手写笔记</span></a>
+    <nav>
+      <a href="https://github.com/rayw-lab/handnote#readme">文档</a>
+      <a class="gh" href="https://github.com/rayw-lab/handnote" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+  </header>
+
+  <main class="desk">
+    <section class="stage" aria-label="手写预览">
+      <div class="lead">
+        <h1>每个字，都是一笔一笔写出来的。</h1>
+        <p>汉字、公式、荧光笔全由代码现写。同一个字写两遍，不会一样。</p>
+      </div>
+      <div class="paper-wrap" id="paper-wrap">
+        <div id="paper" class="paper" role="img" aria-label="手写笔记预览"></div>
+        <div id="loading" class="loading">正在准备笔和纸…</div>
+      </div>
+      <div class="actions">
+        <button id="rewrite" class="primary" type="button">再写一遍</button>
+        <span class="seed">第 <b id="seed-no">1</b> 遍</span>
+        <span class="grow"></span>
+        <button id="dl-png" class="ghost" type="button">下载 PNG</button>
+        <button id="dl-svg" class="ghost" type="button">SVG</button>
+        <button id="share" class="ghost" type="button">复制链接</button>
+      </div>
+      <p id="message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <aside class="panel" aria-label="内容与样式">
+      <div class="presets" role="group" aria-label="示例">
+        <button type="button" data-preset="physics">物理</button>
+        <button type="button" data-preset="math">数学</button>
+        <button type="button" data-preset="reading">读书笔记</button>
+        <button type="button" data-preset="english">English</button>
+      </div>
+
+      <label class="label" for="text">写什么</label>
+      <textarea id="text" spellcheck="false" rows="9"></textarea>
+      <p class="hint"><code>#&nbsp;</code>开头是标题　<code>$…$</code>里是公式　空行分段</p>
+
+      <div class="row">
+        <span class="label">墨水</span>
+        <div class="swatches" role="radiogroup" aria-label="墨水颜色" id="ink"></div>
+      </div>
+
+      <div class="row">
+        <label class="label" for="size">字号</label>
+        <input id="size" type="range" min="34" max="72" step="2" value="52">
+        <output id="size-out" for="size">52</output>
+      </div>
+
+      <div class="row">
+        <span class="label">笔</span>
+        <div class="seg" role="radiogroup" aria-label="笔" data-name="pen">
+          <button type="button" data-v="gel">中性笔</button>
+          <button type="button" data-v="felt">马克笔</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="label">纸</span>
+        <div class="seg" role="radiogroup" aria-label="纸" data-name="paper">
+          <button type="button" data-v="lined">横线</button>
+          <button type="button" data-v="blank">空白</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="label">画幅</span>
+        <div class="seg" role="radiogroup" aria-label="画幅" data-name="format">
+          <button type="button" data-v="portrait">3:4</button>
+          <button type="button" data-v="square">1:1</button>
+          <button type="button" data-v="wide">16:9</button>
+        </div>
+      </div>
+
+      <label class="toggle"><input id="animate" type="checkbox" checked> 播放书写过程</label>
+
+      <details class="more">
+        <summary>在自己的项目里用</summary>
+        <pre><code>npm install github:rayw-lab/handnote
+npx playwright install chromium
+npx handnote write "# 标题\n正文 $F=ma$" -o note.png</code></pre>
+        <p>让 Claude Code / Codex 直接用：<code>npx skills add rayw-lab/handnote</code></p>
+      </details>
+    </aside>
+  </main>
+
+  <footer class="foot">
+    <span>MIT 开源 · 汉字笔画数据来自 <a href="https://github.com/chanind/hanzi-writer-data">hanzi-writer-data</a>（Arphic Public License）</span>
+    <span>内容只在你的浏览器里渲染，不上传</span>
+  </footer>
+</body>
+</html>
